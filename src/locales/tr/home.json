@@ -7,6 +7,7 @@
     },
     "cards": {
       "trafficStats": "Trafik İstatistikleri",
+      "connectionTopStats": "Connection TOP Stats",
       "networkSettings": "Ağ Ayarları",
       "proxyMode": "Vekil Modu"
     },
@@ -17,11 +18,13 @@
         "network": "Ağ Ayarları Kartı",
         "proxyMode": "Vekil Modu Kartı",
         "traffic": "Trafik İstatistikleri Kartı",
+        "connectionTopStats": "Connection TOP Stats Card",
         "tests": "Web Sitesi Testleri Kartı",
         "ip": "IP Bilgi Kartı",
         "clashInfo": "Clash Bilgi Kartları",
         "systemInfo": "Sistem Bilgi Kartları"
       },
+      "dragHandle": "Drag to sort cards",
       "title": "Ana Sayfa Ayarları"
     },
     "title": "Ana Sayfa"
@@ -115,6 +118,12 @@
       "patterns": {
         "minutes": "{{time}} Minutes"
       }
+    },
+    "connectionTopStats": {
+      "outboundTitle": "TOP by Outbound Node",
+      "destinationTitle": "TOP by Destination",
+      "empty": "No connection statistics yet",
+      "countUnit": "connections"
     },
     "clashMode": {
       "errors": {

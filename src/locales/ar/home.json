@@ -7,6 +7,7 @@
     },
     "cards": {
       "trafficStats": "Traffic Stats",
+      "connectionTopStats": "Connection TOP Stats",
       "networkSettings": "Network Settings",
       "proxyMode": "Proxy Mode"
     },
@@ -17,11 +18,13 @@
         "network": "Network Settings Card",
         "proxyMode": "Proxy Mode Card",
         "traffic": "Traffic Stats Card",
+        "connectionTopStats": "Connection TOP Stats Card",
         "tests": "Website Tests Card",
         "ip": "IP Information Card",
         "clashInfo": "Clash Info Cards",
         "systemInfo": "System Info Cards"
       },
+      "dragHandle": "Drag to sort cards",
       "title": "Home Settings"
     },
     "title": "Home"
@@ -115,6 +118,12 @@
       "patterns": {
         "minutes": "{{time}} Minutes"
       }
+    },
+    "connectionTopStats": {
+      "outboundTitle": "TOP by Outbound Node",
+      "destinationTitle": "TOP by Destination",
+      "empty": "No connection statistics yet",
+      "countUnit": "connections"
     },
     "clashMode": {
       "errors": {

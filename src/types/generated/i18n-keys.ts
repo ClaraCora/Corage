@@ -39,6 +39,7 @@ export const translationKeys = [
   'home.page.settings.cards.ip',
   'home.page.settings.cards.clashInfo',
   'home.page.settings.cards.systemInfo',
+  'home.page.settings.dragHandle',
   'home.page.settings.title',
   'home.page.title',
   'home.components.proxyTun.status.systemProxyEnabled',

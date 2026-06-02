@@ -10,6 +10,7 @@ interface EnhancedCardProps {
   iconColor?: 'primary' | 'secondary' | 'error' | 'warning' | 'info' | 'success'
   minHeight?: number | string
   noContentPadding?: boolean
+  hideHeader?: boolean
 }
 
 // 自定义卡片组件
@@ -23,6 +24,7 @@ export const EnhancedCard = forwardRef<HTMLElement, EnhancedCardProps>(
       iconColor = 'primary',
       minHeight,
       noContentPadding = false,
+      hideHeader = false,
     },
     ref,
   ) => {
@@ -50,62 +52,64 @@ export const EnhancedCard = forwardRef<HTMLElement, EnhancedCardProps>(
         }}
         ref={ref}
       >
-        <Box
-          sx={{
-            px: 2,
-            py: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: 1,
-            borderColor: 'divider',
-          }}
-        >
+        {!hideHeader && (
           <Box
             sx={{
+              px: 2,
+              py: 1,
               display: 'flex',
               alignItems: 'center',
-              minWidth: 0,
-              flex: 1,
-              overflow: 'hidden',
+              justifyContent: 'space-between',
+              borderBottom: 1,
+              borderColor: 'divider',
             }}
           >
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 1.5,
-                width: 38,
-                height: 38,
-                mr: 1.5,
-                flexShrink: 0,
-                backgroundColor: alpha(theme.palette[iconColor].main, 0.12),
-                color: theme.palette[iconColor].main,
+                minWidth: 0,
+                flex: 1,
+                overflow: 'hidden',
               }}
             >
-              {icon}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 1.5,
+                  width: 38,
+                  height: 38,
+                  mr: 1.5,
+                  flexShrink: 0,
+                  backgroundColor: alpha(theme.palette[iconColor].main, 0.12),
+                  color: theme.palette[iconColor].main,
+                }}
+              >
+                {icon}
+              </Box>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                {typeof title === 'string' ? (
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      ...titleTruncateStyle,
+                      fontWeight: 'medium',
+                      fontSize: 18,
+                    }}
+                    title={title}
+                  >
+                    {title}
+                  </Typography>
+                ) : (
+                  <Box sx={titleTruncateStyle}>{title}</Box>
+                )}
+              </Box>
             </Box>
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              {typeof title === 'string' ? (
-                <Typography
-                  variant="h6"
-                  sx={{
-                    ...titleTruncateStyle,
-                    fontWeight: 'medium',
-                    fontSize: 18,
-                  }}
-                  title={title}
-                >
-                  {title}
-                </Typography>
-              ) : (
-                <Box sx={titleTruncateStyle}>{title}</Box>
-              )}
-            </Box>
+            {action && <Box sx={{ ml: 2, flexShrink: 0 }}>{action}</Box>}
           </Box>
-          {action && <Box sx={{ ml: 2, flexShrink: 0 }}>{action}</Box>}
-        </Box>
+        )}
         <Box
           sx={{
             flex: 1,

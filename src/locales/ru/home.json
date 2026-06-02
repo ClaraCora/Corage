@@ -7,6 +7,7 @@
     },
     "cards": {
       "trafficStats": "Статистика трафика",
+      "connectionTopStats": "Connection TOP Stats",
       "networkSettings": "Настройки сети",
       "proxyMode": "Режим работы"
     },
@@ -17,11 +18,13 @@
         "network": "Карточка сети",
         "proxyMode": "Карточка режима работы",
         "traffic": "Карточка трафика",
+        "connectionTopStats": "Connection TOP Stats Card",
         "tests": "Карточка проверки доступности сайтов",
         "ip": "Информация об IP",
         "clashInfo": "Информация о Clash",
         "systemInfo": "Информация о системе"
       },
+      "dragHandle": "Drag to sort cards",
       "title": "Настройки главной страницы"
     },
     "title": "Главная"
@@ -115,6 +118,12 @@
       "patterns": {
         "minutes": "{{time}} мин"
       }
+    },
+    "connectionTopStats": {
+      "outboundTitle": "TOP by Outbound Node",
+      "destinationTitle": "TOP by Destination",
+      "empty": "No connection statistics yet",
+      "countUnit": "connections"
     },
     "clashMode": {
       "errors": {

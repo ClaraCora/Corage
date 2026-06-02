@@ -170,6 +170,7 @@ export interface TranslationResources {
             tests: string
             traffic: string
           }
+          dragHandle: string
           title: string
         }
         title: string

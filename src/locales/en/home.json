@@ -24,6 +24,7 @@
         "clashInfo": "Clash Info Cards",
         "systemInfo": "System Info Cards"
       },
+      "dragHandle": "Drag to sort cards",
       "title": "Home Settings"
     },
     "title": "Home"
