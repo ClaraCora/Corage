@@ -7,6 +7,7 @@
     },
     "cards": {
       "trafficStats": "流量统计",
+      "connectionTopStats": "连接 TOP 统计",
       "networkSettings": "网络设置",
       "proxyMode": "代理模式"
     },
@@ -17,6 +18,7 @@
         "network": "网络设置卡",
         "proxyMode": "代理模式卡",
         "traffic": "流量统计卡",
+        "connectionTopStats": "连接 TOP 统计卡",
         "tests": "网站测试卡",
         "ip": "IP 信息卡",
         "clashInfo": "Clash 信息卡",
@@ -115,6 +117,12 @@
       "patterns": {
         "minutes": "{{time}} 分钟"
       }
+    },
+    "connectionTopStats": {
+      "outboundTitle": "按出站节点 TOP",
+      "destinationTitle": "按目标地址 TOP",
+      "empty": "暂无连接统计数据",
+      "countUnit": "次连接"
     },
     "clashMode": {
       "errors": {

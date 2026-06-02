@@ -64,6 +64,12 @@ export interface TranslationResources {
             rule: string
           }
         }
+        connectionTopStats: {
+          countUnit: string
+          destinationTitle: string
+          empty: string
+          outboundTitle: string
+        }
         currentProxy: {
           actions: {
             refreshDelay: string
@@ -146,6 +152,7 @@ export interface TranslationResources {
       }
       page: {
         cards: {
+          connectionTopStats: string
           networkSettings: string
           proxyMode: string
           trafficStats: string
@@ -153,6 +160,7 @@ export interface TranslationResources {
         settings: {
           cards: {
             clashInfo: string
+            connectionTopStats: string
             currentProxy: string
             ip: string
             network: string

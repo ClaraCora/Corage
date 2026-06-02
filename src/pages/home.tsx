@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next'
 
 import { BasePage } from '@/components/base'
 import { ClashModeCard } from '@/components/home/clash-mode-card'
+import { ConnectionTopStatsCard } from '@/components/home/connection-top-stats-card'
 import { CurrentProxyCard } from '@/components/home/current-proxy-card'
 import { EnhancedCard } from '@/components/home/enhanced-card'
 import { EnhancedTrafficStats } from '@/components/home/enhanced-traffic-stats'
@@ -64,6 +65,7 @@ interface HomeCardsSettings {
   network: boolean
   mode: boolean
   traffic: boolean
+  connectionTopStats: boolean
   info: boolean
   clashinfo: boolean
   systeminfo: boolean
@@ -163,6 +165,15 @@ const HomeSettingsDialog = ({
           <FormControlLabel
             control={
               <Checkbox
+                checked={cards.connectionTopStats || false}
+                onChange={() => handleToggle('connectionTopStats')}
+              />
+            }
+            label={t('home.page.settings.cards.connectionTopStats')}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
                 checked={cards.test || false}
                 onChange={() => handleToggle('test')}
               />
@@ -229,6 +240,7 @@ const HomePage = () => {
       network: true,
       mode: true,
       traffic: true,
+      connectionTopStats: true,
       clashinfo: true,
       systeminfo: true,
       test: true,
@@ -328,6 +340,17 @@ const HomePage = () => {
           iconColor="secondary"
         >
           <EnhancedTrafficStats />
+        </EnhancedCard>,
+        12,
+      ),
+      renderCard(
+        'connectionTopStats',
+        <EnhancedCard
+          title={t('home.page.cards.connectionTopStats')}
+          icon={<SpeedOutlined />}
+          iconColor="primary"
+        >
+          <ConnectionTopStatsCard />
         </EnhancedCard>,
         12,
       ),

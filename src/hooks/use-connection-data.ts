@@ -1,6 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { MihomoWebSocket } from 'tauri-plugin-mihomo-api'
 
+import { ingestConnectionTopStatsSnapshot } from '@/services/connection-top-stats'
+
 import { useMihomoWsSubscription } from './use-mihomo-ws-subscription'
 
 const MAX_CLOSED_CONNS_NUM = 500
@@ -105,7 +107,14 @@ export const useConnectionData = () => {
           }
 
           next(null, (old = initConnData) =>
-            mergeConnectionSnapshot(JSON.parse(data) as IConnections, old),
+            {
+              const merged = mergeConnectionSnapshot(
+                JSON.parse(data) as IConnections,
+                old,
+              )
+              ingestConnectionTopStatsSnapshot(merged.activeConnections)
+              return merged
+            },
           )
         },
       }),
