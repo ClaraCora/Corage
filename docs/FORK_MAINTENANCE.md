@@ -101,7 +101,7 @@ target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe
 
 `README.md` 已改为中性说明：
 
-- 不再提 Clash Verge / Clash Verge Rev。
+- 不再提上游原项目品牌名。
 - 不再描述代理软件用途。
 - 不再包含上游下载地址、TG、推广、捐助、机场推荐等内容。
 - 改为个人桌面应用实验仓库说明。
