@@ -30,7 +30,7 @@ interface SeenConnectionStats {
   destination: string
 }
 
-const TOP_LIMIT = 5
+const TOP_LIMIT = 10
 const MAX_STATS_KEYS = 500
 const EMPTY_KEY = '-'
 

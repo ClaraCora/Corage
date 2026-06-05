@@ -65,9 +65,11 @@ export interface TranslationResources {
           }
         }
         connectionTopStats: {
+          collapse: string
           countUnit: string
           destinationTitle: string
           empty: string
+          expandTopTen: string
           outboundTitle: string
         }
         currentProxy: {

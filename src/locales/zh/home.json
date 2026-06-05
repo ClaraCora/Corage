@@ -123,7 +123,9 @@
       "outboundTitle": "按出站节点 TOP",
       "destinationTitle": "按目标地址 TOP",
       "empty": "暂无连接统计数据",
-      "countUnit": "次连接"
+      "countUnit": "次连接",
+      "expandTopTen": "展开 TOP 10",
+      "collapse": "收起 TOP 5"
     },
     "clashMode": {
       "errors": {
