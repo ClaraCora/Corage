@@ -30,7 +30,7 @@ interface SeenConnectionStats {
   destination: string
 }
 
-const TOP_LIMIT = 5
+const TOP_LIMIT = 10
 const MAX_STATS_KEYS = 500
 const EMPTY_KEY = '-'
 
@@ -53,7 +53,7 @@ const normalizeKey = (value?: string | null) => {
 }
 
 const getOutboundKey = (connection: IConnectionsItem) =>
-  normalizeKey(connection.chains?.at(-1))
+  normalizeKey(connection.chains?.[0])
 
 const getDestinationKey = (connection: IConnectionsItem) =>
   normalizeKey(
@@ -158,15 +158,23 @@ export const ingestConnectionTopStatsSnapshot = (
     const download = connection.download ?? 0
 
     if (!previous) {
-      seenConnections.set(connection.id, { upload, download, outbound, destination })
+      seenConnections.set(connection.id, {
+        upload,
+        download,
+        outbound,
+        destination,
+      })
       addStats(outboundStats, outbound, upload, download, 1)
       addStats(destinationStats, destination, upload, download, 1)
       changed = true
       continue
     }
 
-    const counterReset = upload < previous.upload || download < previous.download
-    const uploadDelta = counterReset ? upload : Math.max(upload - previous.upload, 0)
+    const counterReset =
+      upload < previous.upload || download < previous.download
+    const uploadDelta = counterReset
+      ? upload
+      : Math.max(upload - previous.upload, 0)
     const downloadDelta = counterReset
       ? download
       : Math.max(download - previous.download, 0)
@@ -183,8 +191,16 @@ export const ingestConnectionTopStatsSnapshot = (
       changed = true
     }
 
-    if (previous.outbound !== outbound || previous.destination !== destination) {
-      seenConnections.set(connection.id, { upload, download, outbound, destination })
+    if (
+      previous.outbound !== outbound ||
+      previous.destination !== destination
+    ) {
+      seenConnections.set(connection.id, {
+        upload,
+        download,
+        outbound,
+        destination,
+      })
       changed = true
     } else if (uploadDelta > 0 || downloadDelta > 0) {
       previous.upload = upload
@@ -225,7 +241,9 @@ export const useConnectionTopStats = () =>
     getConnectionTopStatsSnapshot,
   )
 
-export const useConnectionTopStatsIngest = (connections?: IConnectionsItem[]) => {
+export const useConnectionTopStatsIngest = (
+  connections?: IConnectionsItem[],
+) => {
   useEffect(() => {
     ingestConnectionTopStatsSnapshot(connections ?? [])
   }, [connections])

@@ -94,6 +94,8 @@ export const translationKeys = [
   'home.components.connectionTopStats.destinationTitle',
   'home.components.connectionTopStats.empty',
   'home.components.connectionTopStats.countUnit',
+  'home.components.connectionTopStats.expandTopTen',
+  'home.components.connectionTopStats.collapse',
   'home.components.clashMode.errors.communication',
   'home.components.clashMode.labels.rule',
   'home.components.clashMode.labels.global',

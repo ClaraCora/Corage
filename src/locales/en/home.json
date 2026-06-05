@@ -122,7 +122,9 @@
       "outboundTitle": "TOP by Outbound Node",
       "destinationTitle": "TOP by Destination",
       "empty": "No connection statistics yet",
-      "countUnit": "connections"
+      "countUnit": "connections",
+      "expandTopTen": "Show TOP 10",
+      "collapse": "Show TOP 5"
     },
     "clashMode": {
       "errors": {

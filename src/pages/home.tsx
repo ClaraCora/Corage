@@ -1,4 +1,6 @@
 import {
+  ArrowDownwardRounded,
+  ArrowUpwardRounded,
   DnsOutlined,
   HelpOutlineRounded,
   HistoryEduOutlined,
@@ -19,6 +21,7 @@ import {
   Grid,
   IconButton,
   Skeleton,
+  Stack,
   Tooltip,
 } from '@mui/material'
 import { useLockFn } from 'ahooks'
@@ -58,23 +61,49 @@ const LazySystemInfoCard = lazy(() =>
   })),
 )
 
-// 定义首页卡片设置接口
+const HOME_CARD_KEYS = [
+  'profile',
+  'proxy',
+  'network',
+  'mode',
+  'traffic',
+  'connectionTopStats',
+  'test',
+  'ip',
+  'clashinfo',
+  'systeminfo',
+] as const
+
+type HomeCardKey = (typeof HOME_CARD_KEYS)[number]
+
+const HOME_CARD_LABEL_KEYS: Record<HomeCardKey, string> = {
+  profile: 'home.page.settings.cards.profile',
+  proxy: 'home.page.settings.cards.currentProxy',
+  network: 'home.page.settings.cards.network',
+  mode: 'home.page.settings.cards.proxyMode',
+  traffic: 'home.page.settings.cards.traffic',
+  connectionTopStats: 'home.page.settings.cards.connectionTopStats',
+  test: 'home.page.settings.cards.tests',
+  ip: 'home.page.settings.cards.ip',
+  clashinfo: 'home.page.settings.cards.clashInfo',
+  systeminfo: 'home.page.settings.cards.systemInfo',
+}
+
 interface HomeCardsSettings {
+  info?: boolean
   profile: boolean
   proxy: boolean
   network: boolean
   mode: boolean
   traffic: boolean
   connectionTopStats: boolean
-  info: boolean
   clashinfo: boolean
   systeminfo: boolean
   test: boolean
   ip: boolean
-  [key: string]: boolean
+  order?: HomeCardKey[]
 }
 
-// 首页设置对话框组件接口
 interface HomeSettingsDialogProps {
   open: boolean
   onClose: () => void
@@ -82,13 +111,31 @@ interface HomeSettingsDialogProps {
   onSave: (cards: HomeCardsSettings) => void
 }
 
+const normalizeHomeCardOrder = (order?: HomeCardKey[]) => {
+  const seenKeys = new Set<HomeCardKey>()
+  const normalized: HomeCardKey[] = []
+
+  for (const key of order ?? []) {
+    if (HOME_CARD_KEYS.includes(key) && !seenKeys.has(key)) {
+      seenKeys.add(key)
+      normalized.push(key)
+    }
+  }
+
+  for (const key of HOME_CARD_KEYS) {
+    if (!seenKeys.has(key)) {
+      normalized.push(key)
+    }
+  }
+
+  return normalized
+}
+
 const serializeCardFlags = (cards: HomeCardsSettings) =>
-  Object.keys(cards)
-    .sort()
-    .map((key) => `${key}:${cards[key] ? 1 : 0}`)
+  HOME_CARD_KEYS.map((key) => `${key}:${cards[key] ? 1 : 0}`)
+    .concat(`order:${normalizeHomeCardOrder(cards.order).join(',')}`)
     .join('|')
 
-// 首页设置对话框组件
 const HomeSettingsDialog = ({
   open,
   onClose,
@@ -98,17 +145,41 @@ const HomeSettingsDialog = ({
   const { t } = useTranslation()
   const [cards, setCards] = useState<HomeCardsSettings>(homeCards)
   const { patchVerge } = useVerge()
+  const order = normalizeHomeCardOrder(cards.order)
 
-  const handleToggle = (key: string) => {
-    setCards((prev: HomeCardsSettings) => ({
+  const handleToggle = (key: HomeCardKey) => {
+    setCards((prev) => ({
       ...prev,
       [key]: !prev[key],
+      order: normalizeHomeCardOrder(prev.order),
     }))
   }
 
+  const handleMove = (key: HomeCardKey, direction: -1 | 1) => {
+    setCards((prev) => {
+      const currentOrder = normalizeHomeCardOrder(prev.order)
+      const index = currentOrder.indexOf(key)
+      const nextIndex = index + direction
+      if (index < 0 || nextIndex < 0 || nextIndex >= currentOrder.length) {
+        return prev
+      }
+
+      const nextOrder = [...currentOrder]
+      ;[nextOrder[index], nextOrder[nextIndex]] = [
+        nextOrder[nextIndex],
+        nextOrder[index],
+      ]
+
+      return { ...prev, order: nextOrder }
+    })
+  }
+
   const handleSave = async () => {
-    await patchVerge({ home_cards: cards })
-    onSave(cards)
+    const nextCards = { ...cards, order: normalizeHomeCardOrder(cards.order) }
+    await patchVerge({
+      home_cards: nextCards as unknown as Record<string, boolean>,
+    })
+    onSave(nextCards)
     onClose()
   }
 
@@ -117,96 +188,39 @@ const HomeSettingsDialog = ({
       <DialogTitle>{t('home.page.settings.title')}</DialogTitle>
       <DialogContent>
         <FormGroup>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.profile || false}
-                onChange={() => handleToggle('profile')}
+          {order.map((key, index) => (
+            <Stack
+              key={key}
+              direction="row"
+              spacing={0.5}
+              sx={{ alignItems: 'center' }}
+            >
+              <FormControlLabel
+                sx={{ flex: 1, minWidth: 0 }}
+                control={
+                  <Checkbox
+                    checked={cards[key] || false}
+                    onChange={() => handleToggle(key)}
+                  />
+                }
+                label={t(HOME_CARD_LABEL_KEYS[key])}
               />
-            }
-            label={t('home.page.settings.cards.profile')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.proxy || false}
-                onChange={() => handleToggle('proxy')}
-              />
-            }
-            label={t('home.page.settings.cards.currentProxy')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.network || false}
-                onChange={() => handleToggle('network')}
-              />
-            }
-            label={t('home.page.settings.cards.network')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.mode || false}
-                onChange={() => handleToggle('mode')}
-              />
-            }
-            label={t('home.page.settings.cards.proxyMode')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.traffic || false}
-                onChange={() => handleToggle('traffic')}
-              />
-            }
-            label={t('home.page.settings.cards.traffic')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.connectionTopStats || false}
-                onChange={() => handleToggle('connectionTopStats')}
-              />
-            }
-            label={t('home.page.settings.cards.connectionTopStats')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.test || false}
-                onChange={() => handleToggle('test')}
-              />
-            }
-            label={t('home.page.settings.cards.tests')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.ip || false}
-                onChange={() => handleToggle('ip')}
-              />
-            }
-            label={t('home.page.settings.cards.ip')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.clashinfo || false}
-                onChange={() => handleToggle('clashinfo')}
-              />
-            }
-            label={t('home.page.settings.cards.clashInfo')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.systeminfo || false}
-                onChange={() => handleToggle('systeminfo')}
-              />
-            }
-            label={t('home.page.settings.cards.systemInfo')}
-          />
+              <IconButton
+                size="small"
+                disabled={index === 0}
+                onClick={() => handleMove(key, -1)}
+              >
+                <ArrowUpwardRounded fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                disabled={index === order.length - 1}
+                onClick={() => handleMove(key, 1)}
+              >
+                <ArrowDownwardRounded fontSize="small" />
+              </IconButton>
+            </Stack>
+          ))}
         </FormGroup>
       </DialogContent>
       <DialogActions>
@@ -223,15 +237,12 @@ const HomePage = () => {
   const { t } = useTranslation()
   const { verge } = useVerge()
   const { current, mutateProfiles } = useProfiles()
-
-  // 设置弹窗的状态
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [localHomeCards, setLocalHomeCards] = useState<{
     value: HomeCardsSettings
     baseSignature: string
   } | null>(null)
 
-  // 卡片显示状态
   const defaultCards = useMemo<HomeCardsSettings>(
     () => ({
       info: false,
@@ -245,6 +256,7 @@ const HomePage = () => {
       systeminfo: true,
       test: true,
       ip: true,
+      order: [...HOME_CARD_KEYS],
     }),
     [],
   )
@@ -255,7 +267,11 @@ const HomePage = () => {
   )
 
   const remoteHomeCards = useMemo<HomeCardsSettings>(
-    () => vergeHomeCards ?? defaultCards,
+    () => ({
+      ...defaultCards,
+      ...(vergeHomeCards ?? {}),
+      order: normalizeHomeCardOrder(vergeHomeCards?.order),
+    }),
     [defaultCards, vergeHomeCards],
   )
 
@@ -272,19 +288,21 @@ const HomePage = () => {
   }, [localHomeCards, remoteSignature])
 
   const effectiveHomeCards = pendingLocalCards ?? remoteHomeCards
+  const effectiveHomeCardOrder = useMemo(
+    () => normalizeHomeCardOrder(effectiveHomeCards.order),
+    [effectiveHomeCards.order],
+  )
 
-  // 文档链接函数
   const toGithubDoc = useLockFn(() => {
     return openWebUrl('https://clash-verge-rev.github.io/index.html')
   })
 
-  // 新增：打开设置弹窗
   const openSettings = useCallback(() => {
     setSettingsOpen(true)
   }, [])
 
   const renderCard = useCallback(
-    (cardKey: string, component: React.ReactNode, size: number = 6) => {
+    (cardKey: HomeCardKey, component: React.ReactNode, size: number = 6) => {
       if (!effectiveHomeCards[cardKey]) return null
 
       return (
@@ -296,20 +314,6 @@ const HomePage = () => {
     [effectiveHomeCards],
   )
 
-  const criticalCards = useMemo(
-    () => [
-      renderCard(
-        'profile',
-        <HomeProfileCard current={current} onProfileUpdated={mutateProfiles} />,
-      ),
-      renderCard('proxy', <CurrentProxyCard />),
-      renderCard('network', <NetworkSettingsCard />),
-      renderCard('mode', <ClashModeEnhancedCard />),
-    ],
-    [current, mutateProfiles, renderCard],
-  )
-
-  // 新增：保存设置时用requestIdleCallback/setTimeout
   const handleSaveSettings = (newCards: HomeCardsSettings) => {
     if (window.requestIdleCallback) {
       window.requestIdleCallback(() =>
@@ -330,61 +334,87 @@ const HomePage = () => {
     }
   }
 
-  const nonCriticalCards = useMemo(
-    () => [
-      renderCard(
-        'traffic',
-        <EnhancedCard
-          title={t('home.page.cards.trafficStats')}
-          icon={<SpeedOutlined />}
-          iconColor="secondary"
-        >
-          <EnhancedTrafficStats />
-        </EnhancedCard>,
-        12,
-      ),
-      renderCard(
-        'connectionTopStats',
-        <EnhancedCard
-          title={t('home.page.cards.connectionTopStats')}
-          icon={<SpeedOutlined />}
-          iconColor="primary"
-        >
-          <ConnectionTopStatsCard />
-        </EnhancedCard>,
-        12,
-      ),
-      renderCard(
-        'test',
-        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
-          <LazyTestCard />
-        </Suspense>,
-      ),
-      renderCard(
-        'ip',
-        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
-          <LazyIpInfoCard />
-        </Suspense>,
-      ),
-      renderCard(
-        'clashinfo',
-        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
-          <LazyClashInfoCard />
-        </Suspense>,
-      ),
-      renderCard(
-        'systeminfo',
-        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
-          <LazySystemInfoCard />
-        </Suspense>,
-      ),
-    ],
-    [t, renderCard],
+  const cardRenderers = useMemo<Record<HomeCardKey, () => React.ReactNode>>(
+    () => ({
+      profile: () =>
+        renderCard(
+          'profile',
+          <HomeProfileCard
+            current={current}
+            onProfileUpdated={mutateProfiles}
+          />,
+        ),
+      proxy: () => renderCard('proxy', <CurrentProxyCard />),
+      network: () => renderCard('network', <NetworkSettingsCard />),
+      mode: () => renderCard('mode', <ClashModeEnhancedCard />),
+      traffic: () =>
+        renderCard(
+          'traffic',
+          <EnhancedCard
+            title={t('home.page.cards.trafficStats')}
+            icon={<SpeedOutlined />}
+            iconColor="secondary"
+          >
+            <EnhancedTrafficStats />
+          </EnhancedCard>,
+          12,
+        ),
+      connectionTopStats: () =>
+        renderCard(
+          'connectionTopStats',
+          <EnhancedCard
+            title={t('home.page.cards.connectionTopStats')}
+            icon={<SpeedOutlined />}
+            iconColor="primary"
+            noContentPadding
+            hideHeader
+          >
+            <ConnectionTopStatsCard />
+          </EnhancedCard>,
+          12,
+        ),
+      test: () =>
+        renderCard(
+          'test',
+          <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
+            <LazyTestCard />
+          </Suspense>,
+        ),
+      ip: () =>
+        renderCard(
+          'ip',
+          <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
+            <LazyIpInfoCard />
+          </Suspense>,
+        ),
+      clashinfo: () =>
+        renderCard(
+          'clashinfo',
+          <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
+            <LazyClashInfoCard />
+          </Suspense>,
+        ),
+      systeminfo: () =>
+        renderCard(
+          'systeminfo',
+          <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
+            <LazySystemInfoCard />
+          </Suspense>,
+        ),
+    }),
+    [current, mutateProfiles, renderCard, t],
   )
+
+  const orderedCards = useMemo(
+    () => effectiveHomeCardOrder.map((key) => cardRenderers[key]()),
+    [cardRenderers, effectiveHomeCardOrder],
+  )
+
   const dialogKey = useMemo(
     () => `${serializeCardFlags(effectiveHomeCards)}:${settingsOpen ? 1 : 0}`,
     [effectiveHomeCards, settingsOpen],
   )
+
   return (
     <BasePage
       title={t('home.page.title')}
@@ -414,12 +444,9 @@ const HomePage = () => {
       }
     >
       <Grid container spacing={1.5} columns={{ xs: 6, sm: 6, md: 12 }}>
-        {criticalCards}
-
-        {nonCriticalCards}
+        {orderedCards}
       </Grid>
 
-      {/* 首页设置弹窗 */}
       <HomeSettingsDialog
         key={dialogKey}
         open={settingsOpen}
@@ -431,7 +458,6 @@ const HomePage = () => {
   )
 }
 
-// 增强版网络设置卡片组件
 const NetworkSettingsCard = () => {
   const { t } = useTranslation()
   return (
@@ -446,7 +472,6 @@ const NetworkSettingsCard = () => {
   )
 }
 
-// 增强版 Clash 模式卡片组件
 const ClashModeEnhancedCard = () => {
   const { t } = useTranslation()
   return (

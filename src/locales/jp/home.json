@@ -7,6 +7,7 @@
     },
     "cards": {
       "trafficStats": "トラフィック統計",
+      "connectionTopStats": "Connection TOP Stats",
       "networkSettings": "ネットワーク設定",
       "proxyMode": "プロキシモード"
     },
@@ -17,6 +18,7 @@
         "network": "ネットワーク設定カード",
         "proxyMode": "プロキシモードカード",
         "traffic": "トラフィック統計カード",
+        "connectionTopStats": "Connection TOP Stats Card",
         "tests": "ウェブサイトテストカード",
         "ip": "IP情報カード",
         "clashInfo": "Clash情報カード",
@@ -115,6 +117,14 @@
       "patterns": {
         "minutes": "{{time}} Minutes"
       }
+    },
+    "connectionTopStats": {
+      "outboundTitle": "TOP by Outbound Node",
+      "destinationTitle": "TOP by Destination",
+      "empty": "No connection statistics yet",
+      "countUnit": "connections",
+      "expandTopTen": "Show TOP 10",
+      "collapse": "Show TOP 5"
     },
     "clashMode": {
       "errors": {
