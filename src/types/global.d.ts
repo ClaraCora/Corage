@@ -139,6 +139,8 @@ interface IRuleProviderItem {
 interface ITrafficItem {
   up: number
   down: number
+  upTotal?: number
+  downTotal?: number
   up_rate?: number
   down_rate?: number
   last_updated?: number
@@ -204,7 +206,7 @@ interface ILogItem {
   payload: string
 }
 
-type LogLevel = import('tauri-plugin-mihomo-api').LogLevel
+type LogLevel = 'debug' | 'info' | 'warning' | 'error' | 'silent'
 type LogFilter = 'all' | 'debug' | 'info' | 'warn' | 'err'
 type LogOrder = 'asc' | 'desc'
 

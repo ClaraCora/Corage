@@ -14,12 +14,14 @@ type LogType = ILogItem['type']
 
 const DEFAULT_LOG_TYPES: LogType[] = ['debug', 'info', 'warning', 'error']
 const LOG_LEVEL_FILTERS: Record<LogLevel, LogType[]> = {
-  debug: DEFAULT_LOG_TYPES,
-  info: ['info', 'warning', 'error'],
-  warning: ['warning', 'error'],
-  error: ['error'],
-  silent: [],
+  DEBUG: DEFAULT_LOG_TYPES,
+  INFO: ['info', 'warning', 'error'],
+  WARNING: ['warning', 'error'],
+  ERROR: ['error'],
+  SILENT: [],
 }
+const toPluginLogLevel = (logLevel: IClashLog['logLevel']): LogLevel =>
+  logLevel.toUpperCase() as LogLevel
 
 const clampLogs = (logs: ILogItem[]): ILogItem[] =>
   logs.length > MAX_LOG_NUM ? logs.slice(-MAX_LOG_NUM) : logs
@@ -52,7 +54,8 @@ export const useLogData = () => {
   const [clashLog] = useClashLog()
   const enableLog = clashLog.enable
   const logLevel = clashLog.logLevel
-  const allowedTypes = LOG_LEVEL_FILTERS[logLevel] ?? DEFAULT_LOG_TYPES
+  const pluginLogLevel = toPluginLogLevel(logLevel)
+  const allowedTypes = LOG_LEVEL_FILTERS[pluginLogLevel] ?? DEFAULT_LOG_TYPES
   const hasLoadedInitialLogsRef = useRef(false)
 
   const { response, refresh, subscriptionCacheKey } = useMihomoWsSubscription<
@@ -61,7 +64,7 @@ export const useLogData = () => {
     storageKey: 'mihomo_logs_date',
     buildSubscriptKey: (date) => (enableLog ? `getClashLog-${date}` : null),
     fallbackData: [],
-    connect: () => MihomoWebSocket.connect_logs(logLevel),
+    connect: () => MihomoWebSocket.connect_logs(pluginLogLevel),
     setupHandlers: ({ next, scheduleReconnect, isMounted }) => {
       let flushTimer: ReturnType<typeof setTimeout> | null = null
       const buffer: ILogItem[] = []
@@ -136,22 +139,17 @@ export const useLogData = () => {
     },
   })
 
-  const previousLogLevelRef = useRef<LogLevel | undefined>(logLevel)
+  const previousLogLevelRef = useRef<LogLevel | undefined>(pluginLogLevel)
 
   useEffect(() => {
-    if (!logLevel) {
-      previousLogLevelRef.current = logLevel ?? undefined
+    if (previousLogLevelRef.current === pluginLogLevel) {
       return
     }
 
-    if (previousLogLevelRef.current === logLevel) {
-      return
-    }
-
-    previousLogLevelRef.current = logLevel
+    previousLogLevelRef.current = pluginLogLevel
     hasLoadedInitialLogsRef.current = false
     refresh()
-  }, [logLevel, refresh])
+  }, [pluginLogLevel, refresh])
 
   const refreshGetClashLog = (clear = false) => {
     if (clear) {
