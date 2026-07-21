@@ -1,24 +1,13 @@
 import { alpha, Box, Button, LinearProgress } from '@mui/material'
-import { relaunch } from '@tauri-apps/plugin-process'
 import { open as openUrl } from '@tauri-apps/plugin-shell'
-import type { DownloadEvent } from '@tauri-apps/plugin-updater'
 import { useLockFn } from 'ahooks'
 import type { Ref } from 'react'
-import {
-  lazy,
-  Suspense,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { lazy, Suspense, useImperativeHandle, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Options as ReactMarkdownOptions } from 'react-markdown'
 
 import { BaseDialog, DialogRef } from '@/components/base'
 import { useUpdate } from '@/hooks/use-update'
-import { showNotice } from '@/services/notice-service'
-import { useSetUpdateState, useUpdateState } from '@/services/states'
 
 type MarkdownNode = {
   type: string
@@ -124,20 +113,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
   const { t } = useTranslation()
 
   const [open, setOpen] = useState(false)
-  const updateState = useUpdateState()
-  const setUpdateState = useSetUpdateState()
-
   const { updateInfo } = useUpdate()
-
-  const [downloaded, setDownloaded] = useState(0)
-  const [total, setTotal] = useState(0)
-  const downloadedRef = useRef(0)
-  const totalRef = useRef(0)
-
-  const progress = useMemo(() => {
-    if (total <= 0) return 0
-    return Math.min((downloaded / total) * 100, 100)
-  }, [downloaded, total])
 
   useImperativeHandle(ref, () => ({
     open: () => setOpen(true),
@@ -151,62 +127,9 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
     return updateInfo?.body
   }, [updateInfo])
 
-  const breakChangeFlag = useMemo(() => {
-    if (!updateInfo?.body) {
-      return false
-    }
-    return updateInfo?.body.toLowerCase().includes('break change')
-  }, [updateInfo])
-
   const onUpdate = useLockFn(async () => {
-    if (!updateInfo?.body) return
-    if (breakChangeFlag) {
-      showNotice.error('settings.modals.update.messages.breakChangeError')
-      return
-    }
-    if (updateState) return
-    setUpdateState(true)
-    setDownloaded(0)
-    setTotal(0)
-    downloadedRef.current = 0
-    totalRef.current = 0
-
-    const onDownloadEvent = (event: DownloadEvent) => {
-      if (event.event === 'Started') {
-        const contentLength = event.data.contentLength ?? 0
-        totalRef.current = contentLength
-        setTotal(contentLength)
-        setDownloaded(0)
-        downloadedRef.current = 0
-        return
-      }
-
-      if (event.event === 'Progress') {
-        setDownloaded((prev) => {
-          const next = prev + event.data.chunkLength
-          downloadedRef.current = next
-          return next
-        })
-      }
-
-      if (event.event === 'Finished' && totalRef.current === 0) {
-        totalRef.current = downloadedRef.current
-        setTotal(downloadedRef.current)
-      }
-    }
-
-    try {
-      await updateInfo.downloadAndInstall(onDownloadEvent)
-      await relaunch()
-    } catch (err: any) {
-      showNotice.error(err)
-    } finally {
-      setUpdateState(false)
-      setDownloaded(0)
-      setTotal(0)
-      downloadedRef.current = 0
-      totalRef.current = 0
-    }
+    if (!updateInfo?.releaseUrl) return
+    await openUrl(updateInfo.releaseUrl)
   })
 
   return (
@@ -240,9 +163,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
             size="small"
             sx={{ whiteSpace: 'nowrap' }}
             onClick={() => {
-              openUrl(
-                `https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/v${updateInfo?.version}`,
-              )
+              if (updateInfo?.releaseUrl) openUrl(updateInfo.releaseUrl)
             }}
           >
             {t('settings.modals.update.actions.goToRelease')}
@@ -441,13 +362,6 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
           </Suspense>
         )}
       </Box>
-      {updateState && (
-        <LinearProgress
-          variant={total > 0 ? 'determinate' : 'indeterminate'}
-          value={progress}
-          sx={{ mt: 1 }}
-        />
-      )}
     </BaseDialog>
   )
 }

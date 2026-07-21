@@ -1,9 +1,3 @@
-import {
-  check,
-  type CheckOptions,
-  type Update,
-} from '@tauri-apps/plugin-updater'
-
 import { version as appVersion } from '@root/package.json'
 
 type VersionParts = {
@@ -11,39 +5,36 @@ type VersionParts = {
   pre: (number | string)[]
 }
 
+type GitHubRelease = {
+  tag_name: string
+  name: string | null
+  body: string | null
+  html_url: string
+  draft: boolean
+}
+
+export type AppUpdate = {
+  available: true
+  version: string
+  body: string | null
+  releaseUrl: string
+}
+
+const RELEASES_API =
+  'https://api.github.com/repos/ClaraCora/Corage/releases?per_page=30'
 const SEMVER_FULL_REGEX =
   /^\d+(?:\.\d+){1,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
-const SEMVER_SEARCH_REGEX =
-  /v?\d+(?:\.\d+){1,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?/i
 
 const normalizeVersion = (input: string | null | undefined): string | null => {
   if (typeof input !== 'string') return null
-  const trimmed = input.trim()
-  if (!trimmed) return null
-  return trimmed.replace(/^v/i, '')
+  const normalized = input.trim().replace(/^v/i, '')
+  return normalized && SEMVER_FULL_REGEX.test(normalized) ? normalized : null
 }
 
-const ensureSemver = (input: string | null | undefined): string | null => {
-  const normalized = normalizeVersion(input)
-  if (!normalized) return null
-  return SEMVER_FULL_REGEX.test(normalized) ? normalized : null
-}
-
-const extractSemver = (input: string | null | undefined): string | null => {
-  if (typeof input !== 'string') return null
-  const match = input.match(SEMVER_SEARCH_REGEX)
-  if (!match) return null
-  return normalizeVersion(match[0])
-}
-
-const splitVersion = (version: string | null): VersionParts | null => {
-  if (!version) return null
-  const [mainPart, preRelease] = version.split('-')
-  const main = mainPart
-    .split('.')
-    .map((part) => Number.parseInt(part, 10))
-    .map((num) => (Number.isNaN(num) ? 0 : num))
-
+const splitVersion = (version: string): VersionParts => {
+  const versionWithoutBuild = version.split('+')[0]
+  const [mainPart, preRelease] = versionWithoutBuild.split('-')
+  const main = mainPart.split('.').map((part) => Number.parseInt(part, 10))
   const pre =
     preRelease?.split('.').map((token) => {
       const numeric = Number.parseInt(token, 10)
@@ -53,94 +44,68 @@ const splitVersion = (version: string | null): VersionParts | null => {
   return { main, pre }
 }
 
-const compareVersionParts = (a: VersionParts, b: VersionParts): number => {
-  const length = Math.max(a.main.length, b.main.length)
+const compareVersions = (a: string, b: string): number => {
+  const partsA = splitVersion(a)
+  const partsB = splitVersion(b)
+  const length = Math.max(partsA.main.length, partsB.main.length)
+
   for (let i = 0; i < length; i += 1) {
-    const diff = (a.main[i] ?? 0) - (b.main[i] ?? 0)
+    const diff = (partsA.main[i] ?? 0) - (partsB.main[i] ?? 0)
     if (diff !== 0) return diff > 0 ? 1 : -1
   }
 
-  if (a.pre.length === 0 && b.pre.length === 0) return 0
-  if (a.pre.length === 0) return 1
-  if (b.pre.length === 0) return -1
+  if (partsA.pre.length === 0 && partsB.pre.length === 0) return 0
+  if (partsA.pre.length === 0) return 1
+  if (partsB.pre.length === 0) return -1
 
-  const preLen = Math.max(a.pre.length, b.pre.length)
-  for (let i = 0; i < preLen; i += 1) {
-    const aToken = a.pre[i]
-    const bToken = b.pre[i]
+  const preLength = Math.max(partsA.pre.length, partsB.pre.length)
+  for (let i = 0; i < preLength; i += 1) {
+    const aToken = partsA.pre[i]
+    const bToken = partsB.pre[i]
     if (aToken === undefined) return -1
     if (bToken === undefined) return 1
-
+    if (aToken === bToken) continue
     if (typeof aToken === 'number' && typeof bToken === 'number') {
-      if (aToken > bToken) return 1
-      if (aToken < bToken) return -1
-      continue
+      return aToken > bToken ? 1 : -1
     }
-
     if (typeof aToken === 'number') return -1
     if (typeof bToken === 'number') return 1
-
-    if (aToken > bToken) return 1
-    if (aToken < bToken) return -1
+    return aToken > bToken ? 1 : -1
   }
 
   return 0
 }
 
-const compareVersions = (a: string | null, b: string | null): number | null => {
-  const partsA = splitVersion(a)
-  const partsB = splitVersion(b)
-  if (!partsA || !partsB) return null
-  return compareVersionParts(partsA, partsB)
-}
-
-const resolveRemoteVersion = (update: Update): string | null => {
-  const primary = ensureSemver(update.version)
-  if (primary) return primary
-
-  const fallbackPrimary = extractSemver(update.version)
-  if (fallbackPrimary) return fallbackPrimary
-
-  const raw = update.rawJson ?? {}
-  const rawVersion = ensureSemver(
-    typeof raw.version === 'string' ? raw.version : null,
-  )
-  if (rawVersion) return rawVersion
-
-  const tagVersion = extractSemver(
-    typeof raw.tag_name === 'string' ? raw.tag_name : null,
-  )
-  if (tagVersion) return tagVersion
-
-  const nameVersion = extractSemver(
-    typeof raw.name === 'string' ? raw.name : null,
-  )
-  if (nameVersion) return nameVersion
-
-  return null
-}
-
-const localVersionNormalized = normalizeVersion(appVersion)
-
-export const checkUpdateSafe = async (
-  options?: CheckOptions,
-): Promise<Update | null> => {
-  const result = await check({ ...(options ?? {}), allowDowngrades: false })
-  if (!result) return null
-
-  const remoteVersion = resolveRemoteVersion(result)
-  const comparison = compareVersions(remoteVersion, localVersionNormalized)
-
-  if (comparison !== null && comparison <= 0) {
-    try {
-      await result.close()
-    } catch (err) {
-      console.warn('[updater] failed to close stale update resource', err)
-    }
-    return null
+export const checkUpdateSafe = async (): Promise<AppUpdate | null> => {
+  const response = await fetch(RELEASES_API, {
+    headers: { Accept: 'application/vnd.github+json' },
+  })
+  if (!response.ok) {
+    throw new Error(`GitHub release check failed: ${response.status}`)
   }
 
-  return result
-}
+  const localVersion = normalizeVersion(appVersion)
+  if (!localVersion) return null
 
-export type { CheckOptions }
+  const releases = (await response.json()) as GitHubRelease[]
+  const latest = releases
+    .filter((release) => !release.draft)
+    .map((release) => ({
+      release,
+      version: normalizeVersion(release.tag_name),
+    }))
+    .filter(
+      (item): item is { release: GitHubRelease; version: string } =>
+        item.version !== null,
+    )
+    .sort((a, b) => compareVersions(b.version, a.version))[0]
+
+  if (!latest || compareVersions(latest.version, localVersion) <= 0) return null
+
+  return {
+    available: true,
+    version: latest.version,
+    body: latest.release.body,
+    releaseUrl: latest.release.html_url,
+  }
+}
