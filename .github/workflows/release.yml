@@ -242,13 +242,15 @@ jobs:
           subject-path: target/${{ matrix.target }}/release/bundle/nsis/*_x64-setup.exe
 
       - name: Upload Release
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          files: target/${{ matrix.target }}/release/bundle/nsis/*_x64-setup.exe
+          name: 'Clash Verge Rev ${{ github.ref_name }}'
+          body: 'Draft release, will be updated later.'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: true
           prerelease: ${{ contains(github.ref_name, '-rc') }}
+          files: target/${{ matrix.target }}/release/bundle/nsis/*_x64-setup.exe
 
   release-for-linux-arm:
     name: Release Build for Linux ARM
