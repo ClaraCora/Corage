@@ -5,16 +5,19 @@ Corage 是一个个人维护的桌面应用实验仓库，主要用于验证跨�
 本仓库面向个人使用和持续迭代，不作为任何上游项目的官方说明页，也不提供面向公众的产品承诺。
 
 ## 项目定位
+
 - 桌面应用 UI 与交互实验
-- WebDav 配置备份和同步
+- 本地状态、运行信息和统计信息展示
+- Windows 本地构建与自动化发布流程验证
+- Tauri、React、TypeScript 与 Rust 集成实践
 
-### FAQ
+## 技术栈
 
-Refer to [Doc FAQ Page](https://clash-verge-rev.github.io/faq/windows.html)
-
-### Donation
-
-[捐助Clash Verge Rev的开发](https://github.com/sponsors/clash-verge-rev)
+- [Tauri](https://tauri.app/) 2
+- [React](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Rust](https://www.rust-lang.org/)
+- [Vite](https://vite.dev/)
 
 ## 开发
 

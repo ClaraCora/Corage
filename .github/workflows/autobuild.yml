@@ -196,6 +196,7 @@ jobs:
           prerelease: true
           files: target/${{ matrix.target }}/release/bundle/nsis/*_x64-setup.exe
 
+  if: ${{ false }}
   autobuild-arm-linux:
     if: ${{ false }}
     name: Autobuild ARM Linux
@@ -349,6 +350,7 @@ jobs:
             target/${{ matrix.target }}/release/bundle/deb/*.deb
             target/${{ matrix.target }}/release/bundle/rpm/*.rpm
 
+  if: ${{ false }}
   autobuild-x86-arm-windows_webview2:
     if: ${{ false }}
     name: Autobuild x86 and ARM Windows with WebView2
@@ -470,6 +472,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  if: ${{ false }}
   notify-telegram:
     name: Notify Telegram
     runs-on: ubuntu-latest
