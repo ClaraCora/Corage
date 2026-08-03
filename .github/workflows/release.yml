@@ -1,9 +1,11 @@
 name: Release Build
 
 on:
-  # ! 涓轰簡閬垮厤閲嶅鍙戝竷鐗堟湰锛屽簲褰撻€氳繃鐙壒 git tag 瑙﹀彂銆?  # ! 涓嶅啀浣跨敤 workflow_dispatch 瑙﹀彂銆?  # workflow_dispatch:
+  # ! 为了避免重复发布版本，应当通过独特 git tag 触发。
+  # ! 不再使用 workflow_dispatch 触发。
+  # workflow_dispatch:
   push:
-    # -rc tag 鏃堕瑙堝彂甯? 璺宠繃 telegram 閫氱煡銆佽烦杩?winget 鎻愪氦銆佽烦杩?latest.json 鏂囦欢鏇存柊
+    # -rc tag 时预览发布，跳过 telegram 通知、跳过 winget 提交、跳过 latest.json 文件更新
     tags:
       - 'v*.*.*'
 permissions: write-all
@@ -35,9 +37,9 @@ jobs:
           MAIN_COMMITS=$(git rev-list origin/main)
 
           if echo "$MAIN_COMMITS" | grep -q "$TAG_COMMIT"; then
-            echo "鉁?Tag $TAG_REF is from main branch"
+            echo "✅ Tag $TAG_REF is from main branch"
           else
-            echo "鉂?Tag $TAG_REF is not from main branch"
+            echo "❌ Tag $TAG_REF is not from main branch"
             echo "This release workflow only accepts tags from main branch."
             exit 1
           fi
@@ -53,13 +55,13 @@ jobs:
           EXPECTED_TAG="v$PKG_VERSION"
 
           if [[ "$TAG_REF" != "$EXPECTED_TAG" ]]; then
-            echo "鉂?Version mismatch:"
+            echo "❌ Version mismatch:"
             echo "   Git tag       : $TAG_REF"
             echo "   package.json  : $EXPECTED_TAG"
             exit 1
           fi
 
-          echo "鉁?Tag and package.json version are consistent."
+          echo "✅ Tag and package.json version are consistent."
 
   prepare_release:
     name: Prepare Draft Release
@@ -74,7 +76,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           target_commitish: ${{ github.sha }}
-          name: 'Clash Verge Rev ${{ github.ref_name }}'
+          name: 'Corage ${{ github.ref_name }}'
           body: 'Draft release, will be updated later.'
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: true
@@ -100,7 +102,7 @@ jobs:
           echo "TAG_NAME=$TAG_REF" >> $GITHUB_ENV
           VERSION=$(echo "$TAG_REF" | sed 's/^v//')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "DOWNLOAD_URL=https://github.com/clash-verge-rev/clash-verge-rev/releases/download/$TAG_REF" >> $GITHUB_ENV
+          echo "DOWNLOAD_URL=https://github.com/ClaraCora/Corage/releases/download/$TAG_REF" >> $GITHUB_ENV
         shell: bash
 
       - run: |
@@ -114,30 +116,13 @@ jobs:
           cat > release.txt << EOF
           $UPDATE_LOGS
 
-          ## 涓嬭浇鍦板潃
+          ## 下载地址
 
-          ### Windows (涓嶅啀鏀寔Win7)
-          #### 姝ｅ父鐗堟湰(鎺ㄨ崘)
-          - [64浣?甯哥敤)](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64-setup.exe) | [ARM64(涓嶅父鐢?](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64-setup.exe)
-
-          #### 鍐呯疆Webview2鐗?浣撶Н杈冨ぇ锛屼粎鍦ㄤ紒涓氱増绯荤粺鎴栨棤娉曞畨瑁厀ebview2鏃朵娇鐢?
-          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64_fixed_webview2-setup.exe) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64_fixed_webview2-setup.exe)
-
-          ### macOS
-          - [Apple M鑺墖](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_aarch64.dmg) | [Intel鑺墖](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64.dmg)
-
-          ### Linux
-          #### DEB鍖?Debian绯? 浣跨敤 apt ./璺緞 瀹夎
-          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_amd64.deb) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64.deb) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_armhf.deb)
-
-          #### RPM鍖?Redhat绯? 浣跨敤 dnf ./璺緞 瀹夎
-          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.x86_64.rpm) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.aarch64.rpm) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.armhfp.rpm)
+          ### Windows (不再支持 Win7)
+          - [64位常用](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64-setup.exe)
 
           ### FAQ
-          - [甯歌闂](https://clash-verge-rev.github.io/faq/windows.html)
-
-          ### 绋冲畾鏈哄満VPN鎺ㄨ崘
-          - [鐙楃嫍鍔犻€焆(https://verge.dginv.click/#/register?code=oaxsAGo6)
+          - [常见问题](https://clash-verge-rev.github.io/faq/windows.html)
 
           Created at ${{ env.BUILDTIME }}.
           EOF
@@ -165,7 +150,7 @@ jobs:
           echo "Publishing release $release_id ($release_url) with $asset_count assets."
 
           gh api --method PATCH repos/{owner}/{repo}/releases/"$release_id" \
-            -f name="Clash Verge Rev $TAG_NAME" \
+            -f name="Corage $TAG_NAME" \
             -F body=@release.txt \
             -F draft=false \
             -F prerelease="$PRERELEASE" \
@@ -245,7 +230,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          name: 'Clash Verge Rev ${{ github.ref_name }}'
+          name: 'Corage ${{ github.ref_name }}'
           body: 'Draft release, will be updated later.'
           token: ${{ secrets.GITHUB_TOKEN }}
           draft: true
@@ -621,7 +606,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install jq
           echo "VERSION=$(cat package.json | jq '.version' | tr -d '"')" >> $GITHUB_ENV
-          echo "DOWNLOAD_URL=https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v$(cat package.json | jq '.version' | tr -d '"')" >> $GITHUB_ENV
+          echo "DOWNLOAD_URL=https://github.com/ClaraCora/Corage/releases/download/v$(cat package.json | jq '.version' | tr -d '"')" >> $GITHUB_ENV
           echo "BUILDTIME=$(TZ=Asia/Shanghai date)" >> $GITHUB_ENV
 
       - name: Generate release.txt
@@ -636,30 +621,13 @@ jobs:
           cat > release.txt << EOF
           $UPDATE_LOGS
 
-          ## 涓嬭浇鍦板潃
+          ## 下载地址
 
-          ### Windows (涓嶅啀鏀寔Win7)
-          #### 姝ｅ父鐗堟湰(鎺ㄨ崘)
-          - [64浣?甯哥敤)](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64-setup.exe) | [ARM64(涓嶅父鐢?](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64-setup.exe)
-
-          #### 鍐呯疆Webview2鐗?浣撶Н杈冨ぇ锛屼粎鍦ㄤ紒涓氱増绯荤粺鎴栨棤娉曞畨瑁厀ebview2鏃朵娇鐢?
-          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64_fixed_webview2-setup.exe) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64_fixed_webview2-setup.exe)
-
-          ### macOS
-          - [Apple M鑺墖](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_aarch64.dmg) | [Intel鑺墖](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64.dmg)
-
-          ### Linux
-          #### DEB鍖?Debian绯? 浣跨敤 apt ./璺緞 瀹夎
-          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_amd64.deb) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64.deb) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_armhf.deb)
-
-          #### RPM鍖?Redhat绯? 浣跨敤 dnf ./璺緞 瀹夎
-          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.x86_64.rpm) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.aarch64.rpm) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.armhfp.rpm)
+          ### Windows (不再支持 Win7)
+          - [64位常用](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64-setup.exe)
 
           ### FAQ
-          - [甯歌闂](https://clash-verge-rev.github.io/faq/windows.html)
-
-          ### 绋冲畾鏈哄満VPN鎺ㄨ崘
-          - [鐙楃嫍鍔犻€焆(https://verge.dginv.click/#/register?code=oaxsAGo6)
+          - [常见问题](https://clash-verge-rev.github.io/faq/windows.html)
 
           Created at ${{ env.BUILDTIME }}.
           EOF
