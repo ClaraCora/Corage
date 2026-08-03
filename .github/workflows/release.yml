@@ -242,7 +242,7 @@ jobs:
           subject-path: target/${{ matrix.target }}/release/bundle/nsis/*_x64-setup.exe
 
       - name: Upload Release
-        uses: actions/gh-release@v1.0.0
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
