@@ -75,16 +75,30 @@ jobs:
           cat > release.txt << EOF
           $UPDATE_LOGS
 
-          ## 下载地址
+          ## 涓嬭浇鍦板潃
 
-          ### Windows (不再支持Win7)
-          - [64位安装包](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64-setup.exe)
+          ### Windows (涓嶅啀鏀寔Win7)
+          #### 姝ｅ父鐗堟湰(鎺ㄨ崘)
+          - [64浣?甯哥敤)](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64-setup.exe) | [ARM64(涓嶅父鐢?](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64-setup.exe)
+
+          #### 鍐呯疆Webview2鐗?浣撶Н杈冨ぇ锛屼粎鍦ㄤ紒涓氱増绯荤粺鎴栨棤娉曞畨瑁厀ebview2鏃朵娇鐢?
+          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64_fixed_webview2-setup.exe) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64_fixed_webview2-setup.exe)
+
+          ### macOS
+          - [Apple M鑺墖](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_aarch64.dmg) | [Intel鑺墖](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64.dmg)
+
+          ### Linux
+          #### DEB鍖?Debian绯? 浣跨敤 apt ./璺緞 瀹夎
+          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_amd64.deb) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64.deb) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_armhf.deb)
+
+          #### RPM鍖?Redhat绯? 浣跨敤 dnf ./璺緞 瀹夎
+          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.x86_64.rpm) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.aarch64.rpm) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.armhfp.rpm)
 
           ### FAQ
-          - [常见问题](https://clash-verge-rev.github.io/faq/windows.html)
+          - [甯歌闂](https://clash-verge-rev.github.io/faq/windows.html)
 
-          ### 稳定机场VPN推荐
-          - [狗狗加速](https://verge.dginv.click/#/register?code=oaxsAGo6)
+          ### 绋冲畾鏈哄満VPN鎺ㄨ崘
+          - [鐙楃嫍鍔犻€焆(https://verge.dginv.click/#/register?code=oaxsAGo6)
 
           Created at ${{ env.BUILDTIME }}.
           EOF
@@ -112,7 +126,7 @@ jobs:
       dry_run: false
 
   autobuild-x86-windows-macos-linux:
-    name: Autobuild Windows x64 Setup
+    name: Autobuild x86 Windows, MacOS and Linux
     needs: [check_commit, update_tag]
     if: ${{ needs.check_commit.outputs.should_run == 'true' }}
     strategy:
@@ -145,6 +159,12 @@ jobs:
             . -> target
           cache-all-crates: true
           cache-workspace-crates: true
+
+      - name: Install dependencies (ubuntu only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxslt1.1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
       - uses: pnpm/action-setup@v6.0.9
         name: Install pnpm
@@ -180,26 +200,33 @@ jobs:
           rustup target list --installed
           echo "Rust target ${{ matrix.target }} installed."
 
-      - name: Tauri build for Windows x64 setup
-        run: pnpm build --target ${{ matrix.target }}
+      - name: Tauri build for Windows-macOS-Linux
+        uses: tauri-apps/tauri-action@v1
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-
-      - name: Upload Release
-        uses: softprops/action-gh-release@v3
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          tag_name: ${{ env.TAG_NAME }}
-          name: 'Clash Verge Rev ${{ env.TAG_CHANNEL }}'
-          token: ${{ secrets.GITHUB_TOKEN }}
+          releaseId: ${{ needs.update_tag.outputs.release_id }}
+          tagName: ${{ env.TAG_NAME }}
+          releaseName: 'Clash Verge Rev ${{ env.TAG_CHANNEL }}'
+          releaseBody: 'More new features are now supported.'
+          releaseDraft: false
           prerelease: true
-          files: target/${{ matrix.target }}/release/bundle/nsis/*_x64-setup.exe
+          tauriScript: pnpm
+          args: --target ${{ matrix.target }}
+          # includeUpdaterJson: true
 
-  if: ${{ false }}
   autobuild-arm-linux:
-    if: ${{ false }}
     name: Autobuild ARM Linux
+    if: false
     needs: [check_commit, update_tag]
     strategy:
       fail-fast: false
@@ -350,10 +377,9 @@ jobs:
             target/${{ matrix.target }}/release/bundle/deb/*.deb
             target/${{ matrix.target }}/release/bundle/rpm/*.rpm
 
-  if: ${{ false }}
   autobuild-x86-arm-windows_webview2:
-    if: ${{ false }}
     name: Autobuild x86 and ARM Windows with WebView2
+    if: false
     needs: [check_commit, update_tag]
     strategy:
       fail-fast: false
@@ -472,14 +498,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  if: ${{ false }}
   notify-telegram:
     name: Notify Telegram
+    if: false
     runs-on: ubuntu-latest
     needs:
       [
         update_tag,
         autobuild-x86-windows-macos-linux,
+        autobuild-arm-linux,
+        autobuild-x86-arm-windows_webview2,
       ]
     steps:
       - name: Checkout repository
@@ -526,16 +554,30 @@ jobs:
           cat > release.txt << EOF
           $UPDATE_LOGS
 
-          ## 下载地址
+          ## 涓嬭浇鍦板潃
 
-          ### Windows (不再支持Win7)
-          - [64位安装包](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64-setup.exe)
+          ### Windows (涓嶅啀鏀寔Win7)
+          #### 姝ｅ父鐗堟湰(鎺ㄨ崘)
+          - [64浣?甯哥敤)](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64-setup.exe) | [ARM64(涓嶅父鐢?](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64-setup.exe)
+
+          #### 鍐呯疆Webview2鐗?浣撶Н杈冨ぇ锛屼粎鍦ㄤ紒涓氱増绯荤粺鎴栨棤娉曞畨瑁厀ebview2鏃朵娇鐢?
+          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64_fixed_webview2-setup.exe) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64_fixed_webview2-setup.exe)
+
+          ### macOS
+          - [Apple M鑺墖](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_aarch64.dmg) | [Intel鑺墖](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64.dmg)
+
+          ### Linux
+          #### DEB鍖?Debian绯? 浣跨敤 apt ./璺緞 瀹夎
+          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_amd64.deb) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64.deb) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_armhf.deb)
+
+          #### RPM鍖?Redhat绯? 浣跨敤 dnf ./璺緞 瀹夎
+          - [64浣峕(${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.x86_64.rpm) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.aarch64.rpm) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge-${{ env.VERSION }}-1.armhfp.rpm)
 
           ### FAQ
-          - [常见问题](https://clash-verge-rev.github.io/faq/windows.html)
+          - [甯歌闂](https://clash-verge-rev.github.io/faq/windows.html)
 
-          ### 稳定机场VPN推荐
-          - [狗狗加速](https://verge.dginv.click/#/register?code=oaxsAGo6)
+          ### 绋冲畾鏈哄満VPN鎺ㄨ崘
+          - [鐙楃嫍鍔犻€焆(https://verge.dginv.click/#/register?code=oaxsAGo6)
 
           Created at ${{ env.BUILDTIME }}.
           EOF
