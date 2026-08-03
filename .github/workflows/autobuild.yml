@@ -135,14 +135,6 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-          - os: macos-latest
-            target: aarch64-apple-darwin
-          - os: macos-latest
-            target: x86_64-apple-darwin
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
@@ -232,6 +224,7 @@ jobs:
           args: --target ${{ matrix.target }}
           # includeUpdaterJson: true
 
+  if: ${{ false }}
   autobuild-arm-linux:
     name: Autobuild ARM Linux
     needs: [check_commit, update_tag]
@@ -385,6 +378,7 @@ jobs:
             target/${{ matrix.target }}/release/bundle/deb/*.deb
             target/${{ matrix.target }}/release/bundle/rpm/*.rpm
 
+  if: ${{ false }}
   autobuild-x86-arm-windows_webview2:
     name: Autobuild x86 and ARM Windows with WebView2
     needs: [check_commit, update_tag]
@@ -506,6 +500,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  if: ${{ false }}
   notify-telegram:
     name: Notify Telegram
     runs-on: ubuntu-latest

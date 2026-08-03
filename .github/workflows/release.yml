@@ -180,7 +180,7 @@ jobs:
             --silent
 
   release:
-    name: Release Build
+    name: Release Windows x64 Setup
     needs: [prepare_release]
     strategy:
       fail-fast: false
@@ -188,14 +188,6 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-          - os: windows-latest
-            target: aarch64-pc-windows-msvc
-          - os: macos-latest
-            target: aarch64-apple-darwin
-          - os: macos-latest
-            target: x86_64-apple-darwin
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -221,13 +213,6 @@ jobs:
             . -> target
           cache-all-crates: true
           cache-workspace-crates: true
-
-      - name: Install dependencies (ubuntu only)
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libxslt1.1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-
       - name: Install Node
         uses: actions/setup-node@v6
         with:
@@ -251,47 +236,35 @@ jobs:
           echo "Rust target ${{ matrix.target }} installed."
 
       - name: Tauri build
-        # 上游 5.24 修改了 latest.json 的生成逻辑，且依赖 tauri-plugin-update 2.10.0 暂未发布，故锁定在 0.5.23 版本
-        uses: tauri-apps/tauri-action@v1.0.0
+        run: pnpm build --target ${{ matrix.target }}
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        with:
-          releaseId: ${{ needs.prepare_release.outputs.release_id }}
-          tagName: ${{ github.ref_name }}
-          releaseBody: 'Draft release, will be updated later.'
-          tauriScript: pnpm
-          args: --target ${{ matrix.target }}
-          includeUpdaterJson: true
 
-      - name: Attest Windows bundles
-        if: matrix.os == 'windows-latest'
+      - name: Get Version
+        run: |
+          $version = node -p "require('./package.json').version"
+          "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Attest Windows x64 setup
         uses: actions/attest-build-provenance@v4
         with:
-          subject-path: target/${{ matrix.target }}/release/bundle/nsis/*setup*
+          subject-path: target/${{ matrix.target }}/release/bundle/nsis/*_x64-setup.exe
 
-      - name: Attest macOS bundles
-        if: matrix.os == 'macos-latest'
-        uses: actions/attest-build-provenance@v4
+      - name: Upload Release
+        uses: softprops/action-gh-release@v3
         with:
-          subject-path: target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          tag_name: ${{ github.ref_name }}
+          name: 'Clash Verge Rev ${{ github.ref_name }}'
+          body: 'Draft release, will be updated later.'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: true
+          prerelease: ${{ contains(github.ref_name, '-rc') }}
+          files: target/${{ matrix.target }}/release/bundle/nsis/*_x64-setup.exe
 
-      - name: Attest Linux bundles
-        if: matrix.os == 'ubuntu-22.04'
-        uses: actions/attest-build-provenance@v4
-        with:
-          subject-path: |
-            target/${{ matrix.target }}/release/bundle/deb/*.deb
-            target/${{ matrix.target }}/release/bundle/rpm/*.rpm
 
+  if: ${{ false }}
   release-for-linux-arm:
     name: Release Build for Linux ARM
     needs: [prepare_release]
@@ -428,6 +401,7 @@ jobs:
             target/${{ matrix.target }}/release/bundle/rpm/*.rpm \
             --clobber
 
+  if: ${{ false }}
   release-for-fixed-webview2:
     name: Release Build for Fixed WebView2
     needs: [prepare_release]
@@ -544,6 +518,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  if: ${{ false }}
   release-update:
     if: ${{ !contains(github.ref_name, '-rc') }}
     name: Release Update
@@ -571,6 +546,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  if: ${{ false }}
   release-update-for-fixed-webview2:
     if: ${{ !contains(github.ref_name, '-rc') }}
     runs-on: ubuntu-latest
@@ -597,6 +573,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  if: ${{ false }}
   submit-to-winget:
     if: ${{ !contains(github.ref_name, '-rc') }}
     name: Submit to Winget
@@ -621,6 +598,7 @@ jobs:
           installers-regex: '_(arm64|x64|x86)-setup\.exe$'
           token: ${{ secrets.WINGET_TOKEN  }}
 
+  if: ${{ false }}
   notify-telegram:
     if: ${{ !contains(github.ref_name, '-rc') }}
     name: Notify Telegram
