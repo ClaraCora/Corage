@@ -39,9 +39,13 @@ pnpm run prebuild
 pnpm dev
 ```
 
-## 构建
+`pnpm dev` preserves the Development Channel's installed service state: an
+existing service is used, while a previously uninstalled service remains
+uninstalled and the app starts in Sidecar mode. Use `pnpm dev:service` to
+explicitly install or update the isolated development service before launch,
+or `pnpm dev:sidecar` to force the unprivileged Sidecar workflow.
 
-构建前端：
+## 构建前端：
 
 ```shell
 pnpm web:build
@@ -72,7 +76,7 @@ pnpm web:build
 当前自动化流程主要面向个人 Windows x64 安装包构建。发布标签需与 `package.json` 中的版本保持一致，例如：
 
 ```text
-v2.5.2-rc.2
+v2.5.2-rc.8
 ```
 
 ## 许可证

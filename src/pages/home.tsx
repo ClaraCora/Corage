@@ -147,11 +147,10 @@ const serializeCardFlags = (cards: HomeCardsSettings) =>
     .concat(`order:${normalizeHomeCardOrder(cards.order).join(',')}`)
     .join('|')
 
+
 const HomeSettingsDialog = ({
-  open,
   onClose,
   homeCards,
-  onSave,
 }: HomeSettingsDialogProps) => {
   const { t } = useTranslation()
   const [cards, setCards] = useState<HomeCardsSettings>(homeCards)
@@ -195,7 +194,7 @@ const HomeSettingsDialog = ({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>{t('home.page.settings.title')}</DialogTitle>
       <DialogContent>
         <FormGroup>
@@ -254,37 +253,6 @@ const HomePage = () => {
     baseSignature: string
   } | null>(null)
 
-  const defaultCards = useMemo<HomeCardsSettings>(
-    () => ({
-      info: false,
-      profile: true,
-      proxy: true,
-      network: true,
-      mode: true,
-      traffic: true,
-      connectionTopStats: true,
-      clashinfo: true,
-      systeminfo: true,
-      test: true,
-      ip: true,
-      order: [...HOME_CARD_KEYS],
-    }),
-    [],
-  )
-
-  const vergeHomeCards = useMemo<HomeCardsSettings | null>(
-    () => (verge?.home_cards as HomeCardsSettings | undefined) ?? null,
-    [verge],
-  )
-
-  const remoteHomeCards = useMemo<HomeCardsSettings>(
-    () => ({
-      ...defaultCards,
-      ...(vergeHomeCards ?? {}),
-      order: normalizeHomeCardOrder(vergeHomeCards?.order),
-    }),
-    [defaultCards, vergeHomeCards],
-  )
 
   const remoteSignature = useMemo(
     () => serializeCardFlags(remoteHomeCards),
