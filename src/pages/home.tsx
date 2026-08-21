@@ -196,7 +196,7 @@ const HomeSettingsDialog = ({
   }
 
   return (
-    <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>{t('home.page.settings.title')}</DialogTitle>
       <DialogContent>
         <FormGroup>
