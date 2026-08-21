@@ -32,10 +32,9 @@ export const ServiceMigrationDialog = () => {
   })
   // Whether the service needs a decision is derived once, in Rust, and travels with the
   // snapshot; a failed refresh is treated as needing one, since we cannot tell otherwise.
-  // Fork uses Sidecar mode by default; suppress the service installation prompt
-  // unless the state refresh genuinely failed (indicating a real problem).
   const needsDecision =
-    stateRefreshFailed && Boolean(runState?.serviceNeedsAttention)
+    stateRefreshFailed || Boolean(runState?.serviceNeedsAttention)
+  // Treat refresh failures as unreachable; an absent Service still needs install after a failed Sidecar attempt.
   const remedy: 'install' | 'repair' | 'reinstall' =
     runState?.pendingAction === 'install'
       ? 'install'
