@@ -1,5 +1,5 @@
 import { Alert } from '@mui/material'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { BaseDialog } from '@/components/base'
@@ -32,10 +32,9 @@ export const ServiceMigrationDialog = () => {
   })
   // Whether the service needs a decision is derived once, in Rust, and travels with the
   // snapshot; a failed refresh is treated as needing one, since we cannot tell otherwise.
-  // Fork uses Sidecar mode by default; suppress the service installation prompt
-  // unless the state refresh genuinely failed (indicating a real problem).
   const needsDecision =
-    stateRefreshFailed && Boolean(runState?.serviceNeedsAttention)
+    stateRefreshFailed || Boolean(runState?.serviceNeedsAttention)
+  // Treat refresh failures as unreachable; an absent Service still needs install after a failed Sidecar attempt.
   const remedy: 'install' | 'repair' | 'reinstall' =
     runState?.pendingAction === 'install'
       ? 'install'
@@ -46,6 +45,46 @@ export const ServiceMigrationDialog = () => {
           : 'reinstall'
   const open = loading || workflowIncomplete || needsDecision
   const showCheckingMessage = loading || !needsDecision
+
+  // Fork: auto-continue with Sidecar when the service is not installed.
+  // The upstream dialog waits for the user to choose, but the fork defaults
+  // to Sidecar mode. When the service is notInstalled and needs a decision,
+  // automatically trigger continueWithSidecar so the core starts without
+  // requiring user interaction.
+  const autoSidecarFired = useRef(false)
+  useEffect(() => {
+    if (!needsDecision || autoSidecarFired.current) return
+    const service = runState?.service
+    if (service === 'notInstalled') {
+      autoSidecarFired.current = true
+      void (async () => {
+        setLoading(true)
+        setWorkflowIncomplete(true)
+        let startupError: unknown
+        try {
+          await continueWithSidecar()
+        } catch (error) {
+          startupError = error
+        }
+        try {
+          const data = await getRuntimeState()
+          await setCacheDataAsync<RunState>(runStateQueryKey, data)
+          setStateRefreshFailed(false)
+        } catch {
+          setStateRefreshFailed(true)
+        }
+        if (startupError) {
+          showNotice.error(
+            'layout.components.serviceMigration.errors.sidecarFailed',
+            startupError,
+          )
+        } else {
+          setWorkflowIncomplete(false)
+        }
+        setLoading(false)
+      })()
+    }
+  }, [needsDecision, runState?.service])
 
   // One cache entry to refresh, so there is nothing left to keep coherent by hand.
   const refreshRunState = async () => {
