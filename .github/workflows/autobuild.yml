@@ -1,10 +1,9 @@
 name: Auto Build
 
 on:
+  # 本 fork 仅保留手动触发。上游的定时构建（UTC 4:00 / 10:00 每日两次）已移除，
+  # 避免无人值守地自动发版。正式发版请推 tag 走 release.yml。
   workflow_dispatch:
-  schedule:
-    # UTC+8 12:00, 18:00 -> UTC 4:00, 10:00
-    - cron: '0 4,10 * * *'
 permissions: write-all
 env:
   TAG_NAME: autobuild

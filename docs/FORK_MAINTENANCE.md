@@ -1,10 +1,12 @@
 # Corage Fork 变更维护说明
 
-> 最后更新：2026-06-03  
+> 最后更新：2026-08-22  
 > 适用仓库：`ClaraCora/Corage` 个人 fork  
-> 当前定制基线：`v2.5.2-rc.2`
+> 当前定制基线：`v2.5.4-rc.1`（对应提交 `ed051a80`，已同步 `upstream/dev`）
 
 本文用于记录本 fork 相比上游项目的主要改动，以及后续同步上游更新时如何保留这些改动。
+
+> 相关文档：Windows 服务模式故障排查见 [`TROUBLESHOOTING_SERVICE.md`](./TROUBLESHOOTING_SERVICE.md)。
 
 ## 1. 本 fork 的目标
 
@@ -54,13 +56,17 @@
 
 ### 2.3 首页卡片自由排序
 
-首页设置弹窗增加拖拽排序能力。
+首页设置弹窗支持调整卡片顺序。
 
 关键点：
 
-- 使用 `@dnd-kit/core`、`@dnd-kit/sortable`、`@dnd-kit/utilities`。
+- 使用 MUI 图标按钮上移 / 下移（`ArrowUpwardRounded`、`ArrowDownwardRounded`），**不使用拖拽**。
 - `home_cards` 除了保存每张卡片是否显示，也保存 `order` 数组。
 - 新增 `normalizeHomeCardOrder(...)`，确保上游新增卡片时不会丢失，未知卡片会被过滤，缺失卡片会补回默认顺序末尾。
+
+> 历史说明：早期版本曾使用 `@dnd-kit/*` 实现拖拽排序，后改为上下箭头按钮。
+> `package.json` 中仍保留 `@dnd-kit/core`、`@dnd-kit/sortable`、`@dnd-kit/utilities` 三个依赖，
+> 但 `src/pages/home.tsx` 已不再引用。若确认无其他用途，可以移除这三个依赖。
 
 ### 2.4 TOP 卡片 UI 美化和紧凑化
 
@@ -84,6 +90,32 @@ target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe
 ```
 
 同时禁用了不需要的 Linux、ARM、fixed WebView2、updater、winget、telegram 等流程。
+
+### 2.5.1 Auto Build 定时触发已移除 ★
+
+`.github/workflows/autobuild.yml` 原本继承上游的每日定时构建：
+
+```yaml
+schedule:
+  # UTC+8 12:00, 18:00 -> UTC 4:00, 10:00
+  - cron: '0 4,10 * * *'
+```
+
+**该 `schedule` 块已删除**，现在只保留 `workflow_dispatch:`（手动触发）。
+
+原因：本 fork 是个人自用仓库，不需要无人值守地每天自动发两次 AutoBuild 版本。
+发版应当只由我自己主动触发。
+
+同步上游时**必须检查并再次移除**这个 `schedule` 块 —— 上游会一直带着它。
+
+当前允许触发构建的方式只有两种：
+
+| 方式 | workflow | 触发条件 |
+| --- | --- | --- |
+| 推送版本 tag（**主要发版方式**） | `release.yml` | `push` tag 匹配 `v*.*.*` |
+| GitHub 网页手动点击 | `autobuild.yml` 等 | `workflow_dispatch` |
+
+其余 workflow 均为 `workflow_dispatch` 或 `pull_request` 触发，不会自动发版。
 
 ### 2.6 Updater artifact 关闭
 
@@ -123,7 +155,7 @@ target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe
 
 | 文件 | 作用 | 维护重点 |
 | --- | --- | --- |
-| `src/pages/home.tsx` | 首页卡片配置、设置弹窗、拖拽排序 | 保留 `HOME_CARD_KEYS` 中的 `connectionTopStats`、`order`、`normalizeHomeCardOrder`、dnd-kit 设置 |
+| `src/pages/home.tsx` | 首页卡片配置、设置弹窗、上下箭头排序 | 保留 `HOME_CARD_KEYS` 中的 `connectionTopStats`、`order`、`normalizeHomeCardOrder`、上移/下移按钮 |
 | `src/types/global.d.ts` | 全局配置类型 | 保留 `home_cards?: Record<string, boolean \| string[] \| undefined>` 这类允许保存 `order` 的类型 |
 | `src/components/home/enhanced-card.tsx` | 首页卡片容器 | 保留 `hideHeader?: boolean`，TOP 卡片依赖它隐藏外层标题 |
 
@@ -131,8 +163,8 @@ target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe
 
 | 文件 | 作用 | 维护重点 |
 | --- | --- | --- |
-| `src/locales/zh/home.json` | 中文首页文案 | 保留连接 TOP 文案、卡片排序拖拽文案 |
-| `src/locales/en/home.json` | 英文首页文案 | 保留连接 TOP 文案、卡片排序拖拽文案 |
+| `src/locales/zh/home.json` | 中文首页文案 | 保留连接 TOP 文案、卡片排序文案 |
+| `src/locales/en/home.json` | 英文首页文案 | 保留连接 TOP 文案、卡片排序文案 |
 
 同步上游后如 i18n 类型报错，执行：
 
@@ -145,7 +177,7 @@ pnpm run i18n:types
 | 文件 | 作用 | 维护重点 |
 | --- | --- | --- |
 | `.github/workflows/release.yml` | tag 触发 Release Build | 保留只构建 Windows x64 setup、`Get Version` 的 PowerShell 写法、上传 `*_x64-setup.exe` |
-| `.github/workflows/autobuild.yml` | 自动构建流程 | 保留只构建 Windows x64 setup、禁用多余平台 |
+| `.github/workflows/autobuild.yml` | 自动构建流程 | 保留只构建 Windows x64 setup、禁用多余平台；**必须移除 `schedule` 定时触发**，只保留 `workflow_dispatch` |
 | `src-tauri/tauri.conf.json` | Tauri 打包配置 | 保留 `createUpdaterArtifacts: false` |
 | `package.json` | 前端版本与脚本 | 发版时版本要和 tag 一致 |
 | `src-tauri/Cargo.toml` | Tauri/Rust 版本 | 发版时版本要和 `package.json` 一致 |
@@ -157,6 +189,7 @@ pnpm run i18n:types
 | --- | --- | --- |
 | `README.md` | 仓库首页说明 | 保持中性个人项目说明，不恢复上游品牌、代理用途、推广和捐助内容 |
 | `docs/FORK_MAINTENANCE.md` | 本文件 | 每次新增 fork 定制后更新 |
+| `docs/TROUBLESHOOTING_SERVICE.md` | Windows 服务模式故障排查 | fork 自有文档，上游没有，同步时不要删除 |
 
 ## 4. 上游同步建议流程
 
@@ -303,12 +336,11 @@ useConnectionData()
 
 必须保留：
 
-- dnd-kit 相关 import。
+- `ArrowUpwardRounded`、`ArrowDownwardRounded` 图标 import。
 - `HOME_CARD_KEYS` 中的 `connectionTopStats`。
 - `HomeCardsSettings` 中的 `order?: HomeCardKey[]`。
 - `normalizeHomeCardOrder(...)`。
-- `SortableHomeCardItem`。
-- `HomeSettingsDialog` 中的拖拽排序逻辑。
+- `HomeSettingsDialog` 中的上移 / 下移排序逻辑。
 - `defaultCards.connectionTopStats = true`。
 - `defaultCards.order = [...HOME_CARD_KEYS]`。
 - `cardRenderers.connectionTopStats`。
@@ -382,7 +414,22 @@ echo "VERSION=$(node -p \"require('./package.json').version\")" >> $env:GITHUB_E
 
 必须保留和 release workflow 一致的 Windows x64 setup-only 策略。
 
-如果上游增加新的发布 job，默认禁用或删除，除非确实需要。
+**并且必须只保留手动触发**：
+
+```yaml
+on:
+  workflow_dispatch:
+```
+
+上游带有下面这段每日定时构建，同步时**必须删除**：
+
+```yaml
+  schedule:
+    # UTC+8 12:00, 18:00 -> UTC 4:00, 10:00
+    - cron: '0 4,10 * * *'
+```
+
+如果上游增加新的发布 job 或新的自动触发条件（`push`、`schedule` 等），默认禁用或删除，除非确实需要。
 
 ### 5.10 `src-tauri/tauri.conf.json`
 
@@ -443,9 +490,11 @@ target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe
 5. 目标地址 TOP 显示 host / remoteDestination / destinationIP。
 6. 总流量、下载、上传、连接次数会随连接变化更新。
 7. 不进入连接页面，仅停留首页或其他页面，TOP 统计也会更新。
-8. 首页设置弹窗可以拖拽排序卡片。
+8. 首页设置弹窗可以用上移 / 下移按钮排序卡片。
 9. 保存排序后重启应用，排序仍然生效。
 10. TOP 列表底部不超出卡片边框。
+11. 设置页运行模式可以正常切到 Service（若切不过去，见
+    [`TROUBLESHOOTING_SERVICE.md`](./TROUBLESHOOTING_SERVICE.md)）。
 
 ### 6.4 GitHub Actions 验证
 
@@ -454,9 +503,18 @@ target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe
 1. `package.json` 版本号。
 2. `src-tauri/Cargo.toml` 版本号。
 3. `Cargo.lock` 中对应包版本。
-4. tag 名称必须等于 `v版本号`，例如：`v2.5.2-rc.2`。
+4. tag 名称必须等于 `v版本号`，例如：`v2.5.4-rc.1`。
 5. workflow 上传路径仍是 `*_x64-setup.exe`。
 6. `createUpdaterArtifacts` 仍是 `false`。
+7. `autobuild.yml` 中**没有** `schedule:` 块（只有 `workflow_dispatch:`）。
+
+另外，release workflow 有两个门槛，推 tag 前要满足：
+
+- tag 名必须和 `package.json` 的 version 完全一致。
+- tag 指向的提交必须是 `origin/main` 的祖先（即已经合并到 main）。
+
+> 提示：本地 `git push` 若被 `.husky/pre-push` 钩子挡住（缺 cargo-make 等工具），
+> 可用 `HUSKY=0 git push`。CI 侧各 workflow 本身也都设置了 `HUSKY: 0`。
 
 ## 7. 推荐提交策略
 
@@ -478,7 +536,7 @@ target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe
 1. 优先接受上游新的基础布局。
 2. 重新加入 `connectionTopStats` 卡片 renderer。
 3. 确认 `orderedCards` 仍按保存顺序渲染。
-4. 确认设置弹窗还能拖拽排序。
+4. 确认设置弹窗还能用上移 / 下移按钮排序。
 
 ### 8.2 上游改了连接订阅 hook
 
@@ -504,6 +562,7 @@ target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe
 2. 删除或禁用不需要的平台 job。
 3. 确保最终只上传 `*_x64-setup.exe`。
 4. 确保 Windows shell 中的命令是 PowerShell 兼容写法。
+5. **检查 `autobuild.yml` 的 `on:` 块，删掉上游重新带回来的 `schedule` 定时触发。**
 
 ### 8.5 README 被上游覆盖
 
@@ -521,6 +580,16 @@ target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe
 4. 如果未来需要跨重启保留统计，需要另行设计本地持久化，不能直接塞进当前内存服务。
 5. 如果未来 TOP 数量增大，需要同步调整首页卡片高度或列表滚动策略。
 6. 如果重新启用 updater artifact，必须配置正确的 Tauri updater signing secret，否则 CI 仍可能失败。
+7. `package.json` 里仍有 `@dnd-kit/core`、`@dnd-kit/sortable`、`@dnd-kit/utilities` 三个依赖，
+   但排序已改为上下箭头按钮，`src/pages/home.tsx` 不再引用它们。可考虑清理。
+8. `knip.json` 中 allow-list 了两处上游自有的孤立导出
+   （`src/types/generated/**`、`src/services/states.ts`），
+   同步上游后如果 knip 报新的未使用导出，先判断是上游的还是本 fork 的，
+   属于上游的加入 `ignoreIssues`，属于本 fork 的直接删掉死代码。
+9. 本 fork 的 Rust 侧与上游**零差异**。历史上曾有人试图从前端
+   （`service-migration-dialog.tsx`）修 Rust 侧的内核启动缺陷，方向是错的。
+   如果内核启动出问题，先按 [`TROUBLESHOOTING_SERVICE.md`](./TROUBLESHOOTING_SERVICE.md)
+   排查机器状态，不要改代码。
 
 ## 10. 快速恢复清单
 
@@ -536,5 +605,6 @@ target/x86_64-pc-windows-msvc/release/bundle/nsis/*_x64-setup.exe
 8. 恢复中英文 i18n key 并生成类型。
 9. 恢复 release/autobuild 的 Windows x64 setup-only 策略。
 10. 确认 `src-tauri/tauri.conf.json` 中 `createUpdaterArtifacts` 为 `false`。
-11. 恢复中性 README。
-12. 跑完整验证清单。
+11. 确认 `.github/workflows/autobuild.yml` 中已移除 `schedule` 定时触发。
+12. 恢复中性 README。
+13. 跑完整验证清单。
