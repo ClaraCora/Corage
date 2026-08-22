@@ -6,6 +6,10 @@
     {
       "layers": [
         {
+          "blend-mode": "normal",
+          "fill": "automatic",
+          "glass": true,
+          "hidden": false,
           "image-name": "ClashVerge.svg",
           "name": "ClashVerge",
           "position": {
@@ -20,7 +24,7 @@
       },
       "translucency": {
         "enabled": true,
-        "value": 0.5
+        "value": 0.2
       }
     }
   ],

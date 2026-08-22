@@ -147,7 +147,6 @@ const serializeCardFlags = (cards: HomeCardsSettings) =>
     .concat(`order:${normalizeHomeCardOrder(cards.order).join(',')}`)
     .join('|')
 
-
 const HomeSettingsDialog = ({
   open,
   onClose,

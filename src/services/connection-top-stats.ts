@@ -1,6 +1,4 @@
-import { useEffect, useSyncExternalStore } from 'react'
-
-export type ConnectionTopStatsKind = 'outbound' | 'destination'
+import { useSyncExternalStore } from 'react'
 
 export interface ConnectionTopStatsItem {
   key: string
@@ -9,7 +7,7 @@ export interface ConnectionTopStatsItem {
   count: number
 }
 
-export interface ConnectionTopStatsSnapshot {
+interface ConnectionTopStatsSnapshot {
   uploadTotal: number
   downloadTotal: number
   connectionCount: number
@@ -220,19 +218,12 @@ export const ingestConnectionTopStatsSnapshot = (
   if (changed) emit()
 }
 
-export const resetConnectionTopStats = () => {
-  outboundStats.clear()
-  destinationStats.clear()
-  seenConnections.clear()
-  emit()
-}
-
-export const subscribeConnectionTopStats = (listener: () => void) => {
+const subscribeConnectionTopStats = (listener: () => void) => {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
 
-export const getConnectionTopStatsSnapshot = () => snapshot
+const getConnectionTopStatsSnapshot = () => snapshot
 
 export const useConnectionTopStats = () =>
   useSyncExternalStore(
@@ -240,11 +231,3 @@ export const useConnectionTopStats = () =>
     getConnectionTopStatsSnapshot,
     getConnectionTopStatsSnapshot,
   )
-
-export const useConnectionTopStatsIngest = (
-  connections?: IConnectionsItem[],
-) => {
-  useEffect(() => {
-    ingestConnectionTopStatsSnapshot(connections ?? [])
-  }, [connections])
-}
