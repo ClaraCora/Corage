@@ -3,6 +3,9 @@ use anyhow::{Context as _, Result};
 use clash_verge_service_ipc::{OwnerCredentials, OwnerIdentity};
 use std::path::Path;
 
+#[cfg(windows)]
+use clash_verge_logging::{Type, logging};
+
 pub(crate) fn current_owner_credentials() -> Result<OwnerCredentials> {
     current_owner_credentials_for_root(&dirs::app_home_dir()?)
 }
@@ -41,6 +44,14 @@ pub(crate) fn current_owner_credentials_for_root(app_root: &Path) -> Result<Owne
 #[cfg(windows)]
 fn windows_owner_credentials(app_data_root: &Path) -> Result<(OwnerIdentity, Option<String>)> {
     let sid = windows_owner::current_sid()?;
+    if windows_owner::ensure_root_owner(app_data_root, &sid)? {
+        logging!(
+            warn,
+            Type::Service,
+            "repaired application data directory owner before requesting Service credentials: {:?}",
+            app_data_root
+        );
+    }
     let token = windows_owner::load_or_create_token(app_data_root, &sid)?;
     Ok((OwnerIdentity::Windows { sid }, Some(token)))
 }
@@ -97,9 +108,9 @@ mod windows_owner {
     };
     use windows_sys::Win32::Storage::FileSystem::{
         BY_HANDLE_FILE_INFORMATION, CREATE_NEW, CreateFileW, FILE_ALL_ACCESS, FILE_ATTRIBUTE_DIRECTORY,
-        FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_OPEN_REPARSE_POINT,
-        FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_TYPE_DISK, GetFileInformationByHandle, GetFileType,
-        OPEN_EXISTING, READ_CONTROL, WRITE_DAC,
+        FILE_ATTRIBUTE_HIDDEN, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_BACKUP_SEMANTICS,
+        FILE_FLAG_OPEN_REPARSE_POINT, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_TYPE_DISK,
+        GetFileInformationByHandle, GetFileType, OPEN_EXISTING, READ_CONTROL, WRITE_DAC, WRITE_OWNER,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
@@ -126,6 +137,25 @@ mod windows_owner {
         }
         let token_user = unsafe { &*buffer.as_ptr().cast::<TOKEN_USER>() };
         sid_to_string(token_user.User.Sid)
+    }
+
+    /// Makes the directory owner satisfy the Service credential contract without changing its
+    /// contents or inherited permissions. The Service independently rejects reparse points, so
+    /// this uses the same no-reparse handle discipline before attempting a repair.
+    pub(super) fn ensure_root_owner(app_data_root: &Path, sid: &str) -> Result<bool> {
+        let descriptor = LocalSecurityDescriptor::from_sid(sid)?;
+        let root = open_root_for_owner_repair(app_data_root)?;
+        validate_root_directory(&root)?;
+
+        if root_owner_matches(root.as_raw_handle(), descriptor.owner()?)? {
+            return Ok(false);
+        }
+
+        descriptor.apply_owner(root.as_raw_handle())?;
+        if !root_owner_matches(root.as_raw_handle(), descriptor.owner()?)? {
+            bail!("application data directory owner still does not match the current user after repair");
+        }
+        Ok(true)
     }
 
     pub(super) fn load_or_create_token(app_data_root: &Path, sid: &str) -> Result<String> {
@@ -259,6 +289,64 @@ mod windows_owner {
             return Err(std::io::Error::last_os_error()).context("failed to open private current-user file");
         }
         Ok(unsafe { std::fs::File::from_raw_handle(handle) })
+    }
+
+    fn open_root_for_owner_repair(path: &Path) -> Result<std::fs::File> {
+        let wide = wide_path(path)?;
+        let handle = unsafe {
+            CreateFileW(
+                wide.as_ptr(),
+                READ_CONTROL | WRITE_OWNER,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                std::ptr::null(),
+                OPEN_EXISTING,
+                FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                std::ptr::null_mut(),
+            )
+        };
+        if handle == INVALID_HANDLE_VALUE {
+            return Err(std::io::Error::last_os_error())
+                .with_context(|| format!("failed to open application data directory {path:?} for owner repair"));
+        }
+        Ok(unsafe { std::fs::File::from_raw_handle(handle) })
+    }
+
+    fn validate_root_directory(root: &std::fs::File) -> Result<()> {
+        let mut information = BY_HANDLE_FILE_INFORMATION::default();
+        if unsafe { GetFileInformationByHandle(root.as_raw_handle(), &mut information) } == 0 {
+            return Err(std::io::Error::last_os_error())
+                .context("failed to inspect application data directory metadata");
+        }
+        if information.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == 0
+            || information.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0
+        {
+            bail!("application data directory is not an ordinary directory");
+        }
+        Ok(())
+    }
+
+    fn root_owner_matches(handle: *mut c_void, expected_owner: PSID) -> Result<bool> {
+        let mut owner = std::ptr::null_mut();
+        let mut security = std::ptr::null_mut();
+        let status = unsafe {
+            GetSecurityInfo(
+                handle,
+                SE_FILE_OBJECT,
+                OWNER_SECURITY_INFORMATION,
+                &mut owner,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                &mut security,
+            )
+        };
+        if status != 0 || security.is_null() {
+            bail!("failed to inspect application data directory owner: Windows error {status}");
+        }
+        let security = LocalSecurityDescriptor(security);
+        let matches = !owner.is_null() && unsafe { EqualSid(owner, expected_owner) } != 0;
+        drop(security);
+        Ok(matches)
     }
 
     fn validate_private_file(file: &std::fs::File, expected_owner: PSID) -> Result<()> {
@@ -478,6 +566,25 @@ mod windows_owner {
             };
             if status != 0 {
                 bail!("failed to restrict owner token DACL: Windows error {status}");
+            }
+            Ok(())
+        }
+
+        fn apply_owner(&self, handle: *mut c_void) -> Result<()> {
+            let owner = self.owner()?;
+            let status = unsafe {
+                SetSecurityInfo(
+                    handle,
+                    SE_FILE_OBJECT,
+                    OWNER_SECURITY_INFORMATION,
+                    owner,
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    std::ptr::null(),
+                )
+            };
+            if status != 0 {
+                bail!("failed to repair application data directory owner: Windows error {status}");
             }
             Ok(())
         }
